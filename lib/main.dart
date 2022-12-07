@@ -74,6 +74,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
     if (!dir.existsSync()) {
       dir.createSync();
     }
+
     await recorder.startRecorder(
       toFile: filePath,
       codec: Codec.pcm16WAV,
@@ -83,11 +84,12 @@ class _RecorderScreenState extends State<RecorderScreen> {
   // to end recording
   Future stop() async {
     await recorder.stopRecorder();
-    setState(() {
-      isStop = true;
-      audioFile = File(filePath);
-    });
-  }
+      setState(() {
+        isStop = true;
+        audioFile = File(filePath);
+      });
+    }
+  
 
   String _duration(Duration duration) {
     String twoDigiits(int n) => n.toString().padLeft(2, '0');
@@ -115,7 +117,11 @@ class _RecorderScreenState extends State<RecorderScreen> {
               builder: (context, snapshot) {
                 final duration =
                     snapshot.hasData ? snapshot.data!.duration : Duration.zero;
-                return Text(_duration(duration));
+                print(duration.inSeconds);
+                return Text(
+                  _duration(duration),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                );
               }),
           const SizedBox(
             height: 10,
