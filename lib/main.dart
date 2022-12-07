@@ -18,20 +18,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: RecorderScreen(),
+      home: const RecorderScreen(),
     );
   }
 }
@@ -47,13 +39,15 @@ class _RecorderScreenState extends State<RecorderScreen> {
   final recorder = FlutterSoundRecorder();
   File? audioFile;
   bool isStop = false;
+  String filePath = '/storage/emulated/0/temp1.wav';
 
   @override
   void initState() {
     super.initState();
 
     initRecorder();
-  } 
+  }
+
 // initializing recorder and user permission
   Future initRecorder() async {
     final permissionsGranted = await Permission.microphone.request();
@@ -73,24 +67,25 @@ class _RecorderScreenState extends State<RecorderScreen> {
     super.dispose();
     recorder.closeRecorder();
   }
+
   // to start recording
   Future record() async {
-    Directory directory = Directory(path.dirname('/storage/emulated/0/audio'));
-    if (!directory.existsSync()) {
-      directory.createSync();
+    Directory dir = Directory(path.dirname(filePath));
+    if (!dir.existsSync()) {
+      dir.createSync();
     }
     await recorder.startRecorder(
-      toFile: '/storage/emulated/0/audio',
+      toFile: filePath,
+      codec: Codec.pcm16WAV,
     );
   }
- // to end recording
+
+  // to end recording
   Future stop() async {
-    final path = await recorder.stopRecorder();
-    final audiofile = File(path!);
-    print(audiofile);
+    await recorder.stopRecorder();
     setState(() {
       isStop = true;
-      audioFile = audiofile;
+      audioFile = File(filePath);
     });
   }
 
@@ -112,6 +107,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
     return Scaffold(
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // duration of recording
           StreamBuilder<RecordingDisposition>(
@@ -119,36 +115,94 @@ class _RecorderScreenState extends State<RecorderScreen> {
               builder: (context, snapshot) {
                 final duration =
                     snapshot.hasData ? snapshot.data!.duration : Duration.zero;
-                return Text('${_duration(duration)}');
+                return Text(_duration(duration));
               }),
           const SizedBox(
             height: 10,
           ),
           // button to start and stop recording
-          Center(
-            child: CircleAvatar(
-              child: IconButton(
-                icon: Icon(recorder.isRecording ? Icons.stop : Icons.mic),
-                onPressed: () async {
-                  if (recorder.isRecording) {
-                    await stop();
-                  } else {
-                    await record();
-                  }
-                  setState(() {});
-                },
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.all(5.0),
+                  backgroundColor: Colors.white,
+                  side: const BorderSide(
+                    color: Colors.orange,
+                    width: 3.0,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  elevation: 10.0,
+                ),
+                onPressed: recorder.isRecording
+                    ? null
+                    : () async {
+                        await record();
+                        setState(() {
+                          isStop = false;
+                        });
+                      },
+                icon: const Icon(
+                  Icons.mic,
+                  color: Colors.red,
+                  size: 35.0,
+                ),
+                label: const Text(''),
               ),
-            ),
+              const SizedBox(
+                width: 10,
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.all(5.0),
+                  backgroundColor: Colors.white,
+                  side: const BorderSide(
+                    color: Colors.orange,
+                    width: 3.0,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  elevation: 10.0,
+                ),
+                onPressed: recorder.isRecording
+                    ? () async {
+                        await stop();
+                        setState(() {});
+                      }
+                    : null,
+                icon: const Icon(
+                  Icons.stop,
+                  color: Colors.black,
+                  size: 35.0,
+                ),
+                label: const Text(''),
+              ),
+            ],
           ),
           // Once recorded then to share it from app
+          const SizedBox(
+            height: 10,
+          ),
           if (isStop)
-            IconButton(
-                onPressed: () async {
-                  print(audioFile!.path);
-                  await Share.shareFiles(
-                      [audioFile!.path]);
-                },
-                icon: Icon(Icons.share))
+            Row(
+              children: [
+                Flexible(
+                    child: TextField(
+                  readOnly: true,
+                  decoration:
+                      InputDecoration(hintText: 'File path : $filePath'),
+                )),
+                IconButton(
+                    onPressed: () async {
+                      await Share.shareFiles([audioFile!.path]);
+                    },
+                    icon: const Icon(Icons.share)),
+              ],
+            )
         ],
       ),
     );
